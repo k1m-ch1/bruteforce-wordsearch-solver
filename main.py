@@ -14,7 +14,7 @@ def match_words_in_wordline(wordline, wordset):
     matched_words = []
     for i in range(len(wordline)):
         for j in range(i, len(wordline)):
-            word_to_check = wordline[i:j]
+            word_to_check = wordline[i:j+1]
             non_reversed_matched = list_of_char_to_string(word_to_check) in wordset
             reversed_matched = list_of_char_to_string(list(reversed(word_to_check))) in wordset
             if non_reversed_matched or reversed_matched:
@@ -54,6 +54,7 @@ def main():
         file_as_string = file.read()
         wordset = set([word.strip().lower() for word in file_as_string.split('\n')])
         wordset = set([word for word in wordset if len(word) >= args.min])
+        print(wordset)
     # first, search through the rows
     rows_of_wordline = crossword
     matched_words = []
@@ -67,7 +68,7 @@ def main():
 
     crossword_transposed = transpose(crossword)
     crossword_string = [list_of_char_to_string(r) for r in crossword]
-    crossword_transposed_string = [list_of_char_to_string(c) for c in crossword_transposed]
+    #crossword_transposed_string = [list_of_char_to_string(c) for c in crossword_transposed]
     columns_of_wordline = crossword_transposed
     for i, column in enumerate(columns_of_wordline):
         matched_words_column = match_words_in_wordline(column, wordset)
@@ -77,33 +78,53 @@ def main():
                            matched_word[3],
                            matched_word[4]) for matched_word in matched_words_column]
 
-    pprint.pprint(crossword_string)
     # now search left diagonals
 
     n = len(crossword)
-    left_diagonal_wordline = []
 
     for i in range(n):
-        left_diagonal_wordline.append([crossword[i + j][j] for j in range(n - i)])
+        matched_words_left_diagonal = match_words_in_wordline([crossword[i + j][j] for j in range(n - i)], wordset)
+        matched_words += [(matched_word[0],
+                           (i + matched_word[1], matched_word[1]),
+                           (i + matched_word[2], matched_word[2]),
+                           matched_word[3],
+                           matched_word[4]) for matched_word in matched_words_left_diagonal]
 
     for i in range(1, n):
-        left_diagonal_wordline.append([crossword[j][i + j] for j in range(n - i)])
-
-    #pprint.pprint(left_diagonal_wordline)
-    #pprint.pprint([list_of_char_to_string(i) for i in left_diagonal_wordline])
-    #pprint.pprint(matched_words)
-   
-    right_diagonal_wordline = []
+        #[crossword[j][i + j] for j in range(n - i)]
+        matched_words_left_diagonal = match_words_in_wordline([crossword[j][i + j] for j in range(n - i)], wordset)
+        matched_words += [(matched_word[0],
+                   (matched_word[1], i + matched_word[1]),
+                   (matched_word[2], i + matched_word[2]),
+                   matched_word[3],
+                   matched_word[4]) for matched_word in matched_words_left_diagonal]
 
     for i in range(n):
-        right_diagonal_wordline.append([crossword[i + j][(n - 1) - j] for j in range(n - i)])
+        #[crossword[i + j][(n - 1) - j] for j in range(n - i)]
+
+        matched_words_right_diagonal = match_words_in_wordline([crossword[i + j][(n - 1) - j] for j in range(n - i)], wordset)
+        matched_words += [(matched_word[0],
+                           (i + matched_word[1], (n - 1) - matched_word[1]),
+                           (i + matched_word[2], (n - 1) - matched_word[2]),
+                           matched_word[3],
+                           matched_word[4]) for matched_word in matched_words_right_diagonal]
+
 
     for i in range(1, n):
-        right_diagonal_wordline.append([crossword[j][(n - 1 - i) - j] for j in range(n - i)])
+        #[crossword[j][(n - 1 - i) - j] for j in range(n - i)]
+        matched_words_right_diagonal = match_words_in_wordline([crossword[j][(n - 1 - i) - j] for j in range(n - i)], wordset)
+        matched_words += [(matched_word[0],
+                           (matched_word[1], (n - 1 - i) - matched_word[1]),
+                           (matched_word[2], (n - 1 - i) - matched_word[2]),
+                           matched_word[3],
+                           matched_word[4]) for matched_word in matched_words_right_diagonal]
+
 
     #pprint.pprint(right_diagonal_wordline)
-    pprint.pprint([list_of_char_to_string(i) for i in right_diagonal_wordline])
+    #pprint.pprint([list_of_char_to_string(i) for i in right_diagonal_wordline])
 
+    pprint.pprint(matched_words)
+    print(len(matched_words))
 if __name__ == "__main__":
     main()
 
