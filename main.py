@@ -77,7 +77,32 @@ def main():
                            matched_word[3],
                            matched_word[4]) for matched_word in matched_words_column]
 
-    pprint.pprint(matched_words)
+    pprint.pprint(crossword_string)
+    # now search left diagonals
+
+    n = len(crossword)
+    left_diagonal_wordline = []
+
+    for i in range(n):
+        left_diagonal_wordline.append([crossword[i + j][j] for j in range(n - i)])
+
+    for i in range(1, n):
+        left_diagonal_wordline.append([crossword[j][i + j] for j in range(n - i)])
+
+    #pprint.pprint(left_diagonal_wordline)
+    #pprint.pprint([list_of_char_to_string(i) for i in left_diagonal_wordline])
+    #pprint.pprint(matched_words)
+   
+    right_diagonal_wordline = []
+
+    for i in range(n):
+        right_diagonal_wordline.append([crossword[i + j][(n - 1) - j] for j in range(n - i)])
+
+    for i in range(1, n):
+        right_diagonal_wordline.append([crossword[j][(n - 1 - i) - j] for j in range(n - i)])
+
+    #pprint.pprint(right_diagonal_wordline)
+    pprint.pprint([list_of_char_to_string(i) for i in right_diagonal_wordline])
 
 if __name__ == "__main__":
     main()
