@@ -1,6 +1,7 @@
 import argparse
 from functools import reduce
 import pprint
+import numpy as np
 
 parser = argparse.ArgumentParser(description="A brute force wordsearch solver")
 
@@ -63,17 +64,30 @@ def main():
         file_as_string = file.read()
         wordset = set([word.strip().lower() for word in file_as_string.split('\n')])
         wordset = set([word for word in wordset if len(word) >= args.min])
-        print(wordset)
+
+
+    if not is_rect(wordsearch):
+        raise ValueError("The wordsearch isn't rectuangular")
+
+    n = len(wordsearch)
+    m = len(wordsearch[0])
+
+    highlight_mask = [[False]*m for _ in range(n)]
     # first, search through the rows
     rows_of_wordline = wordsearch
     matched_words = []
     for i, row in enumerate(rows_of_wordline):
         matched_words_row = match_words_in_wordline(row, wordset)
-        matched_words += [(matched_word[0],
-                           (i, matched_word[1]),
-                           (i, matched_word[2]),
-                           matched_word[3],
-                           matched_word[4]) for matched_word in matched_words_row]
+        for matched_word in matched_words_row:
+            matched_words.append(
+                (matched_word[0],
+                 (i, matched_word[1]),
+                 (i, matched_word[2]),
+                 matched_word[3],
+                 matched_word[4])
+            )
+            for j in range(matched_word[1], matched_word[2] + 1):
+                highlight_mask[i][j] = True
 
     wordsearch_transposed = transpose(wordsearch)
     wordsearch_string = [list_of_char_to_string(r) for r in wordsearch]
@@ -81,16 +95,18 @@ def main():
     columns_of_wordline = wordsearch_transposed
     for i, column in enumerate(columns_of_wordline):
         matched_words_column = match_words_in_wordline(column, wordset)
-        matched_words += [(matched_word[0],
-                           (matched_word[1], i),
-                           (matched_word[2], i),
-                           matched_word[3],
-                           matched_word[4]) for matched_word in matched_words_column]
+        for matched_word in matched_words_column:
+            matched_words.append(
+                (matched_word[0],
+                 (matched_word[1], i),
+                 (matched_word[2], i),
+                 matched_word[3],
+                 matched_word[4])
+            )
+            for j in range(matched_word[1], matched_word[2] + 1):
+                highlight_mask[j][i] = True
 
     # now search left diagonals
-
-    n = len(wordsearch)
-    m = len(wordsearch[0])
 
     for i in range(n):
         matched_words_left_diagonal = match_words_in_wordline([wordsearch[i + j][j] for j in range(min(n,m) - i)], wordset)
@@ -128,11 +144,8 @@ def main():
                            matched_word[3],
                            matched_word[4]) for matched_word in matched_words_right_diagonal]
 
-    #pprint.pprint(right_diagonal_wordline)
-    #pprint.pprint([list_of_char_to_string(i) for i in right_diagonal_wordline])
-
     pprint.pprint(matched_words)
-    print(len(matched_words))
+    print(np.array(highlight_mask))
 if __name__ == "__main__":
     main()
 
