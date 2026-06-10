@@ -2,6 +2,8 @@ import argparse
 from functools import reduce
 import pprint
 import numpy as np
+import copy
+
 
 parser = argparse.ArgumentParser(description="A brute force wordsearch solver")
 
@@ -53,6 +55,32 @@ def list_of_char_to_string(list_of_char):
     elif len(list_of_char) == 1:
         return list_of_char[0]
     return reduce(lambda a, b: a + b, list_of_char)
+
+def apply_highlight_mask(wordsearch, highlight_mask, modify_character):
+    # modify_character is a function that takes in a character and spits out what we want to replace it with
+
+    if not is_rect(wordsearch):
+        raise ValueError("The wordsearch isn't rectuangular")
+
+    n = len(wordsearch)
+    m = len(wordsearch[0])
+    highlighted_wordsearch = copy.deepcopy(wordsearch)
+    for i in range(n):
+        for j in range(m):
+            if highlight_mask[i][j]:
+                highlighted_wordsearch[i][j] = modify_character(wordsearch[i][j])
+
+    return highlighted_wordsearch
+
+def wordsearch_to_string(wordsearch):
+    result = ""
+    for row in wordsearch:
+        for c in row:
+            result += c
+        result += "\n"
+    result.strip('\n')
+    return result
+
 
 def main():
     args = parser.parse_args()
@@ -110,42 +138,76 @@ def main():
 
     for i in range(n):
         matched_words_left_diagonal = match_words_in_wordline([wordsearch[i + j][j] for j in range(min(n,m) - i)], wordset)
-        matched_words += [(matched_word[0],
-                           (i + matched_word[1], matched_word[1]),
-                           (i + matched_word[2], matched_word[2]),
-                           matched_word[3],
-                           matched_word[4]) for matched_word in matched_words_left_diagonal]
+        for matched_word in matched_words_left_diagonal:
+            matched_words.append(
+                (matched_word[0],
+                 (i + matched_word[1], matched_word[1]),
+                 (i + matched_word[2], matched_word[2]),
+                 matched_word[3],
+                 matched_word[4])
+            )
+            for j in range(matched_word[1], matched_word[2] + 1):
+                highlight_mask[i + j][j] = True
 
     for i in range(1, m):
         #[crossword[j][i + j] for j in range(n - i)]
         matched_words_left_diagonal = match_words_in_wordline([wordsearch[j][i + j] for j in range(min(n,m) - i)], wordset)
-        matched_words += [(matched_word[0],
-                   (matched_word[1], i + matched_word[1]),
-                   (matched_word[2], i + matched_word[2]),
-                   matched_word[3],
-                   matched_word[4]) for matched_word in matched_words_left_diagonal]
+        for matched_word in matched_words_left_diagonal:
+            matched_words.append(
+                (matched_word[0],
+                 (matched_word[1], i + matched_word[1]),
+                 (matched_word[2], i + matched_word[2]),
+                 matched_word[3],
+                 matched_word[4])
+            )
+            for j in range(matched_word[1], matched_word[2] + 1):
+                highlight_mask[j][i + j] = True
+
 
     for i in range(n):
         #[crossword[i + j][(n - 1) - j] for j in range(n - i)]
         matched_words_right_diagonal = match_words_in_wordline([wordsearch[i + j][(min(m,n) - 1) - j] for j in range(min(m,n) - i)], wordset)
-        matched_words += [(matched_word[0],
-                           (i + matched_word[1], (min(m, n) - 1) - matched_word[1]),
-                           (i + matched_word[2], (min(m, n) - 1) - matched_word[2]),
-                           matched_word[3],
-                           matched_word[4]) for matched_word in matched_words_right_diagonal]
+        for matched_word in matched_words_right_diagonal:
+            matched_words.append(
+                (matched_word[0],
+                 (i + matched_word[1], (min(m, n) - 1) - matched_word[1]),
+                 (i + matched_word[2], (min(m, n) - 1) - matched_word[2]),
+                 matched_word[3],
+                 matched_word[4])
+            )
 
+            for j in range(matched_word[1], matched_word[2] + 1):
+                highlight_mask[i + j][(min(m, n) - 1) - j] = True
 
     for i in range(1, m):
         #[crossword[j][(n - 1 - i) - j] for j in range(n - i)]
         matched_words_right_diagonal = match_words_in_wordline([wordsearch[j][(min(m,n) - 1 - i) - j] for j in range(min(m,n) - i)], wordset)
-        matched_words += [(matched_word[0],
-                           (matched_word[1], (min(m, n) - 1 - i) - matched_word[1]),
-                           (matched_word[2], (min(m, n) - 1 - i) - matched_word[2]),
-                           matched_word[3],
-                           matched_word[4]) for matched_word in matched_words_right_diagonal]
+        for matched_word in matched_words_right_diagonal:
+            matched_words.append(
+                    (matched_word[0],
+                    (matched_word[1], (min(m, n) - 1 - i) - matched_word[1]),
+                    (matched_word[2], (min(m, n) - 1 - i) - matched_word[2]),
+                    matched_word[3],
+                    matched_word[4])
+            )
+            for j in range(matched_word[1], matched_word[2] + 1):
+                highlight_mask[j][(min(m, n) - 1 - i) - j] = True
+
+    start_mask = [[False]*m for _ in range(n)]
+    end_mask = [[False]*m for _ in range(n)]
+    for matched_word in matched_words:
+        start_coord = matched_word[1]
+        end_coord = matched_word[2]
+        start_mask[start_coord[0]][start_coord[1]] = True
+        end_mask[end_coord[0]][end_coord[1]] = True
 
     pprint.pprint(matched_words)
     print(np.array(highlight_mask))
+    highlighted_wordsearch = apply_highlight_mask(wordsearch, highlight_mask, lambda c: "\033[1;33m" + c + "\033[0m")
+    highlighted_wordsearch = apply_highlight_mask(highlighted_wordsearch, start_mask, lambda c: "\033[44m" + c)
+    highlighted_wordsearch = apply_highlight_mask(highlighted_wordsearch, end_mask, lambda c: "\033[45m" + c)
+    print(wordsearch_to_string(highlighted_wordsearch))
+
 if __name__ == "__main__":
-    main()
+  main()
 
