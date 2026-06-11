@@ -1,9 +1,47 @@
 import argparse
 from functools import reduce
 import pprint
-import numpy as np
 import copy
+import numpy as np
 
+ANSI_BLACK = "\033[0;30m"
+ANSI_RED = "\033[0;31m"
+ANSI_GREEN = "\033[0;32m"
+ANSI_BROWN = "\033[0;33m"
+ANSI_BLUE = "\033[0;34m"
+ANSI_PURPLE = "\033[0;35m"
+ANSI_CYAN = "\033[0;36m"
+ANSI_LIGHT_GRAY = "\033[0;37m"
+ANSI_DARK_GRAY = "\033[1;30m"
+ANSI_LIGHT_RED = "\033[1;31m"
+ANSI_LIGHT_GREEN = "\033[1;32m"
+ANSI_YELLOW = "\033[1;33m"
+ANSI_LIGHT_BLUE = "\033[1;34m"
+ANSI_LIGHT_PURPLE = "\033[1;35m"
+ANSI_LIGHT_CYAN = "\033[1;36m"
+ANSI_LIGHT_WHITE = "\033[1;37m"
+ANSI_BOLD = "\033[1m"
+ANSI_FAINT = "\033[2m"
+ANSI_ITALIC = "\033[3m"
+ANSI_UNDERLINE = "\033[4m"
+ANSI_BLINK = "\033[5m"
+ANSI_NEGATIVE = "\033[7m"
+ANSI_CROSSED = "\033[9m"
+ANSI_END = "\033[0m"
+
+SELECTED_COLORS = [
+    ANSI_RED,
+    ANSI_GREEN,
+    ANSI_BROWN,
+    ANSI_BLUE,
+    ANSI_PURPLE,
+    ANSI_CYAN,
+    ANSI_YELLOW
+]
+
+APPLY_SELECTED_COlORS = [lambda c: SELECTED_COLORS[i] + c + ANSI_END for i in range(len(SELECTED_COLORS))]
+
+DEFAULT_COLOR = ANSI_END
 
 parser = argparse.ArgumentParser(description="A brute force wordsearch solver")
 
@@ -44,6 +82,7 @@ def transpose(array_of_array):
     n = len(array_of_array)
     m = len(array_of_array[0])
     array_transposed = [[None]*n for _ in range(m)]
+    # the index of the color
     for i in range(n):
         for j in range(m):
             array_transposed[j][i] = array_of_array[i][j]
@@ -69,7 +108,6 @@ def apply_highlight_mask(wordsearch, highlight_mask, modify_character):
         for j in range(m):
             if highlight_mask[i][j]:
                 highlighted_wordsearch[i][j] = modify_character(wordsearch[i][j])
-
     return highlighted_wordsearch
 
 def wordsearch_to_string(wordsearch):
@@ -81,8 +119,8 @@ def wordsearch_to_string(wordsearch):
     result.strip('\n')
     return result
 
-
 def main():
+
     args = parser.parse_args()
     with open(args.wordsearch, 'r') as file:
         wordsearch_string = file.read()
@@ -93,14 +131,15 @@ def main():
         wordset = set([word.strip().lower() for word in file_as_string.split('\n')])
         wordset = set([word for word in wordset if len(word) >= args.min])
 
-
     if not is_rect(wordsearch):
         raise ValueError("The wordsearch isn't rectuangular")
 
     n = len(wordsearch)
     m = len(wordsearch[0])
 
-    highlight_mask = [[False]*m for _ in range(n)]
+    highlight_masks = [[[False]*m for _ in range(n)] for _ in range(len(SELECTED_COLORS))]
+    highlight_mask = [[DEFAULT_COLOR]*n for _ in range(n)]
+    selected_color = 0
     # first, search through the rows
     rows_of_wordline = wordsearch
     matched_words = []
@@ -115,7 +154,10 @@ def main():
                  matched_word[4])
             )
             for j in range(matched_word[1], matched_word[2] + 1):
-                highlight_mask[i][j] = True
+                highlight_masks[selected_color][i][j] = True
+                highlight_mask[i][j] = SELECTED_COLORS[selected_color]
+            selected_color += 1
+            selected_color = selected_color % len(SELECTED_COLORS)
 
     wordsearch_transposed = transpose(wordsearch)
     wordsearch_string = [list_of_char_to_string(r) for r in wordsearch]
@@ -132,7 +174,11 @@ def main():
                  matched_word[4])
             )
             for j in range(matched_word[1], matched_word[2] + 1):
-                highlight_mask[j][i] = True
+                highlight_masks[selected_color][j][i] = True
+                highlight_mask[j][i] = SELECTED_COLORS[selected_color]
+            selected_color += 1
+            selected_color = selected_color % len(SELECTED_COLORS)
+
 
     # now search left diagonals
 
@@ -147,7 +193,13 @@ def main():
                  matched_word[4])
             )
             for j in range(matched_word[1], matched_word[2] + 1):
-                highlight_mask[i + j][j] = True
+                highlight_masks[selected_color][i + j][j] = True
+                highlight_mask[i + j][j] = SELECTED_COLORS[selected_color]
+
+            selected_color += 1
+            selected_color = selected_color % len(SELECTED_COLORS)
+
+
 
     for i in range(1, m):
         #[crossword[j][i + j] for j in range(n - i)]
@@ -161,7 +213,12 @@ def main():
                  matched_word[4])
             )
             for j in range(matched_word[1], matched_word[2] + 1):
-                highlight_mask[j][i + j] = True
+                highlight_masks[selected_color][j][i + j] = True
+                highlight_mask[j][i + j] = SELECTED_COLORS[selected_color]
+
+            selected_color += 1
+            selected_color = selected_color % len(SELECTED_COLORS)
+
 
 
     for i in range(n):
@@ -177,7 +234,12 @@ def main():
             )
 
             for j in range(matched_word[1], matched_word[2] + 1):
-                highlight_mask[i + j][(min(m, n) - 1) - j] = True
+                highlight_masks[selected_color][i + j][(min(m, n) - 1) - j] = True
+                highlight_mask[i + j][(min(m, n) - 1) -  j] = SELECTED_COLORS[selected_color]
+
+            selected_color += 1
+            selected_color = selected_color % len(SELECTED_COLORS)
+
 
     for i in range(1, m):
         #[crossword[j][(n - 1 - i) - j] for j in range(n - i)]
@@ -191,22 +253,34 @@ def main():
                     matched_word[4])
             )
             for j in range(matched_word[1], matched_word[2] + 1):
-                highlight_mask[j][(min(m, n) - 1 - i) - j] = True
+                highlight_masks[selected_color][j][(min(m, n) - 1 - i) - j] = True
+                highlight_mask[j][(min(m, n) - 1 - i) -  j] = SELECTED_COLORS[selected_color]
 
-    start_mask = [[False]*m for _ in range(n)]
-    end_mask = [[False]*m for _ in range(n)]
-    for matched_word in matched_words:
-        start_coord = matched_word[1]
-        end_coord = matched_word[2]
-        start_mask[start_coord[0]][start_coord[1]] = True
-        end_mask[end_coord[0]][end_coord[1]] = True
+            selected_color += 1
+            selected_color = selected_color % len(SELECTED_COLORS)
+
+
+    #start_mask = [[False]*m for _ in range(n)]
+    #end_mask = [[False]*m for _ in range(n)]
+    #for matched_word in matched_words:
+    #    start_coord = matched_word[1]
+    #    end_coord = matched_word[2]
+    #    start_mask[start_coord[0]][start_coord[1]] = True
+    #    end_mask[end_coord[0]][end_coord[1]] = True
 
     pprint.pprint(matched_words)
-    print(np.array(highlight_mask))
-    highlighted_wordsearch = apply_highlight_mask(wordsearch, highlight_mask, lambda c: "\033[1;33m" + c + "\033[0m")
-    highlighted_wordsearch = apply_highlight_mask(highlighted_wordsearch, start_mask, lambda c: "\033[44m" + c)
-    highlighted_wordsearch = apply_highlight_mask(highlighted_wordsearch, end_mask, lambda c: "\033[45m" + c)
-    print(wordsearch_to_string(highlighted_wordsearch))
+    highlighted_wordsearch = copy.deepcopy(wordsearch)
+    better_highlighted_wordsearch = copy.deepcopy(wordsearch)
+    print(np.array(highlight_masks))
+    for i in range(len(highlight_masks)):
+        highlighted_wordsearch = apply_highlight_mask(highlighted_wordsearch, highlight_masks[i], APPLY_SELECTED_COlORS[i])
+
+    for i in range(n):
+        for j in range(m):
+            better_highlighted_wordsearch[i][j] = highlight_mask[i][j] + better_highlighted_wordsearch[i][j]
+
+    #print(wordsearch_to_string(highlighted_wordsearch))
+    print(wordsearch_to_string(better_highlighted_wordsearch))
 
 if __name__ == "__main__":
   main()
