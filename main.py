@@ -93,19 +93,16 @@ def list_of_char_to_string(list_of_char):
         return list_of_char[0]
     return reduce(lambda a, b: a + b, list_of_char)
 
-def apply_highlight_mask(wordsearch, highlight_mask, modify_character):
-    # modify_character is a function that takes in a character and spits out what we want to replace it with
-
+def apply_highlight_mask(wordsearch, highlight_mask):
     if not is_rect(wordsearch):
         raise ValueError("The wordsearch isn't rectuangular")
 
+    highlighted_wordsearch = copy.deepcopy(wordsearch)
     n = len(wordsearch)
     m = len(wordsearch[0])
-    highlighted_wordsearch = copy.deepcopy(wordsearch)
     for i in range(n):
         for j in range(m):
-            if highlight_mask[i][j]:
-                highlighted_wordsearch[i][j] = modify_character(wordsearch[i][j])
+            highlighted_wordsearch[i][j] = highlight_mask[i][j] + highlighted_wordsearch[i][j]
     return highlighted_wordsearch
 
 def wordsearch_to_string(wordsearch):
@@ -123,12 +120,12 @@ def main():
     with open(args.wordsearch, 'r') as file:
         wordsearch_string = file.read()
         wordsearch = [list(wordline) for wordline in wordsearch_string.strip().split('\n')]
+        print(wordsearch)
 
     with open(args.wordlist, 'r') as file:
         file_as_string = file.read()
         wordset = set([word.strip().lower() for word in file_as_string.split('\n')])
         wordset = set([word for word in wordset if len(word) >= args.min])
-        print(wordset)
 
     if not is_rect(wordsearch):
         raise ValueError("The wordsearch isn't rectuangular")
@@ -136,8 +133,9 @@ def main():
     n = len(wordsearch)
     m = len(wordsearch[0])
 
-    highlight_masks = [[[False]*m for _ in range(n)] for _ in range(len(SELECTED_COLORS))]
-    highlight_mask = [[DEFAULT_COLOR]*n for _ in range(n)]
+    default_mask = [[DEFAULT_COLOR]*m for _ in range(n)]
+    highlight_mask = copy.deepcopy(default_mask)
+    matched_masks = []
     selected_color = 0
     # first, search through the rows
     rows_of_wordline = wordsearch
@@ -152,9 +150,11 @@ def main():
                  matched_word[3],
                  matched_word[4])
             )
+            matched_mask = copy.deepcopy(default_mask)
             for j in range(matched_word[1], matched_word[2] + 1):
-                highlight_masks[selected_color][i][j] = True
+                matched_mask[i][j] = SELECTED_COLORS[selected_color]
                 highlight_mask[i][j] = SELECTED_COLORS[selected_color]
+            matched_masks.append(matched_mask)
             selected_color += 1
             selected_color = selected_color % len(SELECTED_COLORS)
 
@@ -172,9 +172,11 @@ def main():
                  matched_word[3],
                  matched_word[4])
             )
+            matched_mask = copy.deepcopy(default_mask)
             for j in range(matched_word[1], matched_word[2] + 1):
-                highlight_masks[selected_color][j][i] = True
+                matched_mask[j][i] = SELECTED_COLORS[selected_color]
                 highlight_mask[j][i] = SELECTED_COLORS[selected_color]
+            matched_masks.append(matched_mask)
             selected_color += 1
             selected_color = selected_color % len(SELECTED_COLORS)
 
@@ -182,7 +184,8 @@ def main():
     # now search left diagonals
 
     for i in range(n):
-        matched_words_left_diagonal = match_words_in_wordline([wordsearch[i + j][j] for j in range(min(n,m) - i)], wordset)
+        wordline = [wordsearch[i + j][j] for j in range(min(n - i, m))]
+        matched_words_left_diagonal = match_words_in_wordline(wordline, wordset)
         for matched_word in matched_words_left_diagonal:
             matched_words.append(
                 (matched_word[0],
@@ -191,10 +194,12 @@ def main():
                  matched_word[3],
                  matched_word[4])
             )
+            matched_mask = copy.deepcopy(default_mask)
             for j in range(matched_word[1], matched_word[2] + 1):
-                highlight_masks[selected_color][i + j][j] = True
+                matched_mask[i + j][j] = SELECTED_COLORS[selected_color]
                 highlight_mask[i + j][j] = SELECTED_COLORS[selected_color]
 
+            matched_masks.append(matched_mask)
             selected_color += 1
             selected_color = selected_color % len(SELECTED_COLORS)
 
@@ -202,7 +207,8 @@ def main():
 
     for i in range(1, m):
         #[crossword[j][i + j] for j in range(n - i)]
-        matched_words_left_diagonal = match_words_in_wordline([wordsearch[j][i + j] for j in range(min(n,m) - i)], wordset)
+        wordline = [wordsearch[j][i + j] for j in range(min(n,m - i))]
+        matched_words_left_diagonal = match_words_in_wordline(wordline, wordset)
         for matched_word in matched_words_left_diagonal:
             matched_words.append(
                 (matched_word[0],
@@ -211,65 +217,69 @@ def main():
                  matched_word[3],
                  matched_word[4])
             )
-            for j in range(matched_word[1], matched_word[2] + 1):
-                highlight_masks[selected_color][j][i + j] = True
-                highlight_mask[j][i + j] = SELECTED_COLORS[selected_color]
 
+            matched_mask = copy.deepcopy(default_mask)
+            for j in range(matched_word[1], matched_word[2] + 1):
+                highlight_mask[j][i + j] = SELECTED_COLORS[selected_color]
+                matched_mask[j][i + j] = SELECTED_COLORS[selected_color]
+            matched_masks.append(matched_mask)
             selected_color += 1
             selected_color = selected_color % len(SELECTED_COLORS)
 
     # and search right diagonal
     for i in range(n):
         #[crossword[i + j][(n - 1) - j] for j in range(n - i)]
-        wordline = [wordsearch[i + j][(min(m,n) - 1) - j] for j in range(min(m,n) - i)]
-        print(wordline)
+        wordline = [wordsearch[i + j][(m - 1) - j] for j in range(min(m,n - i))]
         matched_words_right_diagonal = match_words_in_wordline(wordline, wordset)
         for matched_word in matched_words_right_diagonal:
             matched_words.append(
                 (matched_word[0],
-                 (i + matched_word[1], (min(m, n) - 1) - matched_word[1]),
-                 (i + matched_word[2], (min(m, n) - 1) - matched_word[2]),
+                 (i + matched_word[1], (m - 1) - matched_word[1]),
+                 (i + matched_word[2], (m - 1) - matched_word[2]),
                  matched_word[3],
                  matched_word[4])
             )
 
+            matched_mask = copy.deepcopy(default_mask)
             for j in range(matched_word[1], matched_word[2] + 1):
-                highlight_masks[selected_color][i + j][(min(m, n) - 1) - j] = True
-                highlight_mask[i + j][(min(m, n) - 1) -  j] = SELECTED_COLORS[selected_color]
-
+                highlight_mask[i + j][(m - 1) -  j] = SELECTED_COLORS[selected_color]
+                matched_mask[i + j][(m - 1) -  j] = SELECTED_COLORS[selected_color]
+            matched_masks.append(matched_mask)
             selected_color += 1
             selected_color = selected_color % len(SELECTED_COLORS)
 
 
     for i in range(1, m):
         #[crossword[j][(n - 1 - i) - j] for j in range(n - i)]
-        matched_words_right_diagonal = match_words_in_wordline([wordsearch[j][(min(m,n) - 1 - i) - j] for j in range(min(m,n) - i)], wordset)
+        wordline = [wordsearch[j][(m - 1 - i) - j] for j in range(min(m - i, n))]
+        matched_words_right_diagonal = match_words_in_wordline(wordline, wordset)
         for matched_word in matched_words_right_diagonal:
             matched_words.append(
                     (matched_word[0],
-                    (matched_word[1], (min(m, n) - 1 - i) - matched_word[1]),
-                    (matched_word[2], (min(m, n) - 1 - i) - matched_word[2]),
+                    (matched_word[1], (m - 1 - i) - matched_word[1]),
+                    (matched_word[2], (m - 1 - i) - matched_word[2]),
                     matched_word[3],
                     matched_word[4])
             )
-            for j in range(matched_word[1], matched_word[2] + 1):
-                highlight_masks[selected_color][j][(min(m, n) - 1 - i) - j] = True
-                highlight_mask[j][(min(m, n) - 1 - i) -  j] = SELECTED_COLORS[selected_color]
 
+            matched_mask = copy.deepcopy(default_mask)
+            for j in range(matched_word[1], matched_word[2] + 1):
+                highlight_mask[j][(m - 1 - i) -  j] = SELECTED_COLORS[selected_color]
+                matched_mask[j][(m - 1 - i) -  j] = SELECTED_COLORS[selected_color]
+            matched_masks.append(matched_mask)
             selected_color += 1
             selected_color = selected_color % len(SELECTED_COLORS)
 
-    highlighted_wordsearch = copy.deepcopy(wordsearch)
-    better_highlighted_wordsearch = copy.deepcopy(wordsearch)
-    for i in range(len(highlight_masks)):
-        highlighted_wordsearch = apply_highlight_mask(highlighted_wordsearch, highlight_masks[i], APPLY_SELECTED_COlORS[i])
 
-    for i in range(n):
-        for j in range(m):
-            better_highlighted_wordsearch[i][j] = highlight_mask[i][j] + better_highlighted_wordsearch[i][j]
+    highlighted_wordsearch = apply_highlight_mask(wordsearch, highlight_mask)
+
+    for i, matched_mask in enumerate(matched_masks):
+        print(f"{i + 1}")
+        print(wordsearch_to_string(apply_highlight_mask(wordsearch, matched_mask)))
 
     #print(wordsearch_to_string(highlighted_wordsearch))
-    print(wordsearch_to_string(better_highlighted_wordsearch))
+    print(wordsearch_to_string(highlighted_wordsearch))
+    print(f"{len(matched_words)} out of {len(wordset)} found.")
 
 if __name__ == "__main__":
   main()
