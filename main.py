@@ -1,8 +1,6 @@
 import argparse
 from functools import reduce
-import pprint
 import copy
-import numpy as np
 
 ANSI_BLACK = "\033[0;30m"
 ANSI_RED = "\033[0;31m"
@@ -130,6 +128,7 @@ def main():
         file_as_string = file.read()
         wordset = set([word.strip().lower() for word in file_as_string.split('\n')])
         wordset = set([word for word in wordset if len(word) >= args.min])
+        print(wordset)
 
     if not is_rect(wordsearch):
         raise ValueError("The wordsearch isn't rectuangular")
@@ -219,11 +218,12 @@ def main():
             selected_color += 1
             selected_color = selected_color % len(SELECTED_COLORS)
 
-
-
+    # and search right diagonal
     for i in range(n):
         #[crossword[i + j][(n - 1) - j] for j in range(n - i)]
-        matched_words_right_diagonal = match_words_in_wordline([wordsearch[i + j][(min(m,n) - 1) - j] for j in range(min(m,n) - i)], wordset)
+        wordline = [wordsearch[i + j][(min(m,n) - 1) - j] for j in range(min(m,n) - i)]
+        print(wordline)
+        matched_words_right_diagonal = match_words_in_wordline(wordline, wordset)
         for matched_word in matched_words_right_diagonal:
             matched_words.append(
                 (matched_word[0],
@@ -259,19 +259,8 @@ def main():
             selected_color += 1
             selected_color = selected_color % len(SELECTED_COLORS)
 
-
-    #start_mask = [[False]*m for _ in range(n)]
-    #end_mask = [[False]*m for _ in range(n)]
-    #for matched_word in matched_words:
-    #    start_coord = matched_word[1]
-    #    end_coord = matched_word[2]
-    #    start_mask[start_coord[0]][start_coord[1]] = True
-    #    end_mask[end_coord[0]][end_coord[1]] = True
-
-    pprint.pprint(matched_words)
     highlighted_wordsearch = copy.deepcopy(wordsearch)
     better_highlighted_wordsearch = copy.deepcopy(wordsearch)
-    print(np.array(highlight_masks))
     for i in range(len(highlight_masks)):
         highlighted_wordsearch = apply_highlight_mask(highlighted_wordsearch, highlight_masks[i], APPLY_SELECTED_COlORS[i])
 

@@ -11,6 +11,7 @@ So basically, we need to search $4 \times n \times n^2 = 4n^3$.
 # TODO
 
 - [x] expand this to also include $n \times m$ word search
+- [] fix left and right diagonal logic for rectangular wordsearches
 - [] clean up the code
 - [] save result as something
 - [] Highlight the words found.
